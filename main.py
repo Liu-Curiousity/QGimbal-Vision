@@ -6,8 +6,8 @@
 参数：
   --camera        摄像头索引（默认 0）
   --display       是否显示图形化窗口（0/1，默认 1）
-                 - 1：显示图像（现有效果），并叠加矩形与 FPS
-                 - 0：不显示窗口，在终端输出 FPS + 检测到的矩形中心点坐标/面积
+                 - 1：显示图像（现有效果），并叠加手掌与 FPS
+                 - 0：不显示窗口，在终端输出 FPS + 检测到的掌心坐标/面积
   --print-interval 终端输出间隔秒数（仅 --display 0 时生效，默认 0.5）
 
 GUI 模式按 'q' 或 ESC 退出；无窗口模式请按 Ctrl+C 退出。
@@ -19,7 +19,7 @@ import sys
 
 import cv2
 
-from vision.rect_detect import detect_rectangles, draw_detected_rect
+from vision.palm_detect import PalmDetector
 
 from control.pid import PID
 from control.feedbacker import Feedbacker
@@ -79,12 +79,13 @@ def main():
 
     # 控制器初始化
     tracker = GimbalTracker(
-        yaw_pid=PID(kp=140.0, ki=40.0, kd=1.4, integral_limit=0.15, output_limit=args.max_rpm),
-        pitch_pid=PID(kp=140.0, ki=40.0, kd=1.4, integral_limit=0.15, output_limit=args.max_rpm),
+        yaw_pid=PID(kp=150.0, ki=60.0, kd=1.4, integral_limit=0.15, output_limit=args.max_rpm),
+        pitch_pid=PID(kp=100.0, ki=40.0, kd=1.4, integral_limit=0.15, output_limit=args.max_rpm),
         lost_timeout_s=args.lost_timeout, invert_yaw=True
     )
     serial_stub = GimbalSerialStub(args.serial_port, args.serial_baud)
     feedbacker = Feedbacker(display=args.display)
+    palm_detector = PalmDetector()
     serial_stub.open()
 
     tracker.enabled = True
@@ -101,19 +102,19 @@ def main():
 
             frame = cv2.flip(frame, -1)  # 翻转画面
 
-            # 对每帧执行矩形检测
-            rects = detect_rectangles(frame, min_area_ratio=0.005, max_area_ratio=0.5, angle_tol=25.0)
-            best_rect = rects[0] if rects else None
-            best_rect_center = rects[0].center if rects else None
+            # 对每帧执行手掌检测
+            palms = palm_detector.detect(frame)
+            best_palm = palms[0] if palms else None
+            best_palm_center = best_palm.center if best_palm else None
 
             # PID 控制：将目标中心追踪到屏幕中心，输出 yaw/pitch rpm
             tracker.target_center = (frame.shape[:2][1] // 2 + 10, frame.shape[:2][0] // 2)  # 追踪目标, 单位: px
-            error_pixel, yaw_pitch_rpm = tracker.update(frame.shape[:2], best_rect_center)
+            error_pixel, yaw_pitch_rpm = tracker.update(frame.shape[:2], best_palm_center)
             if yaw_pitch_rpm is not None:
                 yaw_rpm, pitch_rpm = yaw_pitch_rpm
-                serial_stub.send_command(serial_stub.CmdType.LowSpeedCtrl, (yaw_rpm, pitch_rpm))  # 发送转速到云台
+                serial_stub.send_command(serial_stub.CmdType.SpeedCtrl, (yaw_rpm, pitch_rpm))  # 发送转速到云台
 
-            feedbacker.update(frame, best_rect, tracker.target_center, error_pixel, yaw_pitch_rpm)
+            feedbacker.update(frame, best_palm, tracker.target_center, error_pixel, yaw_pitch_rpm)
 
     except KeyboardInterrupt:
         print('\n收到中断，退出...')
@@ -121,6 +122,7 @@ def main():
         cap.release()
         serial_stub.close()
         feedbacker.close()
+        palm_detector.close()
 
 
 if __name__ == '__main__':

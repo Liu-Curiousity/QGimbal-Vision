@@ -3,10 +3,10 @@
 This package contains small, reusable computer vision utilities used by `main.py`.
 """
 
-from .rect_detect import DetectedRect, detect_rectangles, draw_detected_rect
+from .palm_detect import DetectedPalm, PalmDetector, draw_detected_palm
 
 __all__ = [
-    "DetectedRect",
-    "detect_rectangles",
-    "draw_detected_rect",
+    "DetectedPalm",
+    "PalmDetector",
+    "draw_detected_palm",
 ]

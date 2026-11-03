@@ -50,7 +50,7 @@ class GimbalSerialStub:
     def close(self) -> None:
         if self._ser is None:
             return
-        self.send_command(self.CmdType.SpeedCtrl, (0, 0))
+        self.send_command(self.CmdType.Disable)
         self._ser.close()
         self._ser = None
 

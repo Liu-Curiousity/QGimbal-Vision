@@ -5,7 +5,7 @@ import time
 from typing import Tuple
 
 import cv2
-from vision.rect_detect import draw_detected_rect
+from vision.palm_detect import draw_detected_palm
 
 
 def get_fps():
@@ -42,7 +42,7 @@ class Feedbacker:
     def close(self):
         self.__del__()
 
-    def update(self, frame, rect,
+    def update(self, frame, palm,
                center_pixel: Tuple[int, int],
                error_pixel: Tuple[float, float],
                yaw_pitch_rpm: Tuple[float, float] | None
@@ -51,8 +51,8 @@ class Feedbacker:
         err_x, err_y = error_pixel
         yaw_rpm, pitch_rpm = yaw_pitch_rpm if yaw_pitch_rpm is not None else (0.0, 0.0)
         if self.display:
-            if rect is not None:
-                draw_detected_rect(frame, rect)
+            if palm is not None:
+                draw_detected_palm(frame, palm)
             # 画面中心点
             cv2.drawMarker(frame, center_pixel, (255, 0, 0),
                            markerType=cv2.MARKER_CROSS, markerSize=18, thickness=2)
@@ -74,11 +74,11 @@ class Feedbacker:
             # 无窗口：终端输出 FPS + 检测结果
             if (time.time() - self._last_print) >= 0.05:
                 self._last_print = time.time()
-                if rect is None:
-                    print(f"fps={fps:.1f} rect=none rpm=({yaw_rpm:.1f},{pitch_rpm:.1f})")
+                if palm is None:
+                    print(f"fps={fps:.1f} palm=none rpm=({yaw_rpm:.1f},{pitch_rpm:.1f})")
                 else:
-                    cx, cy = rect.center
+                    cx, cy = palm.center
                     print(
-                        f"fps={fps:.1f} cx={cx:.1f} cy={cy:.1f} area={rect.area:.0f} "
+                        f"fps={fps:.1f} cx={cx:.1f} cy={cy:.1f} area={palm.area:.0f} "
                         f"err=({err_x:.0f},{err_y:.0f}) rpm=({yaw_rpm:.1f},{pitch_rpm:.1f})"
                     )

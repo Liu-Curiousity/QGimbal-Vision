@@ -1,6 +1,6 @@
 # QGimbal-vision
 
-QGimbal云台配套视觉程序。试用 OpenCV 库实现基于传统视觉算法的白色矩形检测，将误差进行PID计算后，通过UART向QGimbal发送指令实现目标追踪。
+QGimbal云台配套视觉程序。使用 MediaPipe 识别手掌并跟踪掌心，将误差进行PID计算后，通过UART向QGimbal发送指令实现目标追踪。
 
 ## 运行步骤
 
@@ -13,6 +13,8 @@ cd QGimbal-Vision # 进入仓库目录
 ```
 
 ### **2. 安装依赖环境**
+
+使用 Python 3.10–3.12；MediaPipe 固定为 0.10.21，使用自带模型的 Hands API。
 
 ```bash
 pip install -r requirements.txt # 使用pip安装
