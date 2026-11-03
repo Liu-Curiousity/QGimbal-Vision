@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+import time
 from typing import List, Optional, Tuple
 
 import cv2
@@ -18,24 +20,35 @@ class DetectedPalm:
 
 
 class PalmDetector:
-    """Reuse MediaPipe Hands across frames and track the palm center."""
+    """Reuse MediaPipe HandLandmarker across frames and track the palm center."""
 
     def __init__(self) -> None:
-        self._hands = mp.solutions.hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-            min_detection_confidence=0.5,
+        model_path = Path(__file__).resolve().parent / 'models' / 'hand_landmarker.task'
+        options = mp.tasks.vision.HandLandmarkerOptions(
+            base_options=mp.tasks.BaseOptions(model_asset_buffer=model_path.read_bytes()),
+            running_mode=mp.tasks.vision.RunningMode.VIDEO,
+            num_hands=2,
+            min_hand_detection_confidence=0.5,
+            min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5,
         )
+        self._hands = mp.tasks.vision.HandLandmarker.create_from_options(options)
+        self._timestamp_ms = -1
 
     def detect(self, frame: np.ndarray) -> List[DetectedPalm]:
-        results = self._hands.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        image = mp.Image(
+            image_format=mp.ImageFormat.SRGB,
+            data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB),
+        )
+        # 视频模式要求时间戳严格递增，即使连续帧落在同一毫秒也不能重复。
+        self._timestamp_ms = max(self._timestamp_ms + 1, time.monotonic_ns() // 1_000_000)
+        results = self._hands.detect_for_video(image, self._timestamp_ms)
         h, w = frame.shape[:2]
         palms = []
-        for landmarks in results.multi_hand_landmarks or []:
+        for landmarks in results.hand_landmarks:
             # 手腕和四指指根定义掌部，避免手指伸屈影响掌心位置。
             points = np.array([
-                (landmarks.landmark[i].x * w, landmarks.landmark[i].y * h)
+                (landmarks[i].x * w, landmarks[i].y * h)
                 for i in (0, 5, 9, 13, 17)
             ], dtype=np.float32)
             box = cv2.convexHull(points).reshape(-1, 2)

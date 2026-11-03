@@ -14,7 +14,8 @@ cd QGimbal-Vision # 进入仓库目录
 
 ### **2. 安装依赖环境**
 
-使用 Python 3.10–3.12；MediaPipe 固定为 0.10.21，使用自带模型的 Hands API。
+使用 Python 3.10–3.12；MediaPipe 固定为 0.10.31（修复 0.10.30 的 Windows 库加载错误），使用 Tasks HandLandmarker API。
+官方[手部模型](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker#models)位于 `vision/models/hand_landmarker.task`，运行时无需下载。
 
 ```bash
 pip install -r requirements.txt # 使用pip安装
